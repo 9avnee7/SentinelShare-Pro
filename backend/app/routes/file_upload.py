@@ -7,7 +7,7 @@ from fastapi import Query
 from jose import JWTError, jwt
 import os
 import json
-from ..utils.virusTotal import check_file_hash_with_virustotal
+
 from fastapi.responses import JSONResponse
 
 router = APIRouter(tags=["Upload"])
@@ -35,13 +35,7 @@ async def upload_chunk(
     db: Session = Depends(get_db),
 ):
     # Check malware status only for first chunk
-    if chunkIndex == 0:
-        virus_report = await check_file_hash_with_virustotal(fileHash)
-        if virus_report.get("found") and virus_report["malicious_votes"] > 0:
-            return JSONResponse(
-                status_code=400,
-                content={"error": "Malicious file detected by VirusTotal", "details": virus_report}
-            )
+    
 
     # Authenticate user
     try:

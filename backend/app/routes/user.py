@@ -13,6 +13,14 @@ from fastapi.responses import JSONResponse
 router = APIRouter(prefix="/user", tags=["Users"])
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "defaultsecret")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+environment=os.getenv("environment","development")
+
+
+secureCheck=environment=="production"
+if(secureCheck):
+    flexibility="Strict"
+else:
+    flexibility="Lax"
 
 # Logger setup
 logging.basicConfig(level=logging.INFO)
@@ -51,8 +59,8 @@ def register(response: Response, user: schemas.UserCreate, db: Session = Depends
         access_token = auth.create_access_token(data={"sub": user.email})
         refresh_token = auth.create_refresh_token(data={"sub": user.email})
 
-        response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False)
-        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False)
+        response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=secureCheck,samesite=flexibility)
+        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=secureCheck,samesite=flexibility)
 
         logger.info(f"User registered successfully: {user.email}")
         return {
@@ -86,8 +94,8 @@ def login(response: Response, username: str = Form(...), password: str = Form(..
         access_token = auth.create_access_token(data={"sub": user.email})
         refresh_token = auth.create_refresh_token(data={"sub": user.email})
 
-        response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=False)
-        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=False)
+        response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=secureCheck,samesite=flexibility)
+        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=secureCheck,samesite=flexibility)
 
         logger.info(f"User logged in: {username}")
         return {
@@ -138,8 +146,8 @@ def refresh_token(response: Response, request: Request, db: Session = Depends(ge
         new_access_token = auth.create_access_token(data={"sub": user.email})
         new_refresh_token = auth.create_refresh_token(data={"sub": user.email})
 
-        response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True, secure=False)
-        response.set_cookie(key="access_token", value=new_access_token, httponly=True, secure=False)
+        response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True, secure=secureCheck,samesite=flexibility)
+        response.set_cookie(key="access_token", value=new_access_token, httponly=True, secure=secureCheck,samesite=flexibility)
 
         logger.info(f"Token refreshed for user: {user.email}")
         return {
@@ -191,8 +199,8 @@ async def login_with_google(data: dict, response: Response, db: Session = Depend
         access_token = auth.create_access_token(data={"sub": email})
         refresh_token = auth.create_refresh_token(data={"sub": email})
 
-        response.set_cookie("access_token", access_token, httponly=True)
-        response.set_cookie("refresh_token", refresh_token, httponly=True)
+        response.set_cookie("access_token", access_token, httponly=True,secure=secureCheck,samesite=flexibility)
+        response.set_cookie("refresh_token", refresh_token, httponly=True,secure=secureCheck,samesite=flexibility)
 
         return {
             "access_token": access_token,

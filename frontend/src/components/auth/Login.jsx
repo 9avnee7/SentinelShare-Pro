@@ -3,8 +3,11 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { GlobalContext } from '../../index.jsx';
 import { GoogleLogin } from '@react-oauth/google';
+import { useDispatch } from 'react-redux';
+import { setAuthState } from '../../redux/userSlice';
 
 export default function Login() {
+  const dispatch = useDispatch();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -14,7 +17,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { setAccessToken, setLoggedIn, setUserInfo } = useContext(GlobalContext);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -36,10 +38,10 @@ export default function Login() {
       });
 
       setMessage('Login successful');
-      setAccessToken(res.data.access_token);
-      setLoggedIn(true);
-      setUserInfo(res.data.user_info);
-      localStorage.setItem('userInfo', JSON.stringify(res.data.user_info));
+       dispatch(setAuthState({
+          userInfo: res.data.user_info,
+          accessToken: res.data.access_token
+        }));
       navigate('/dashboard');
     } catch (err) {
       setMessage(err.response?.data?.detail || 'Login failed');
@@ -48,25 +50,27 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse) => {
-    try {
-      const credential = credentialResponse.credential;
+const handleGoogleLogin = async (credentialResponse) => {
+  try {
+    const credential = credentialResponse.credential;
 
-      const res = await axios.post(
-        'http://localhost:8000/user/login/google',
-        { token: credential },
-        { withCredentials: true }
-      );
+    const res = await axios.post(
+      'http://localhost:8000/user/login/google',
+      { token: credential },
+      { withCredentials: true }
+    );
 
-      setAccessToken(res.data.access_token);
-      setLoggedIn(true);
-      setUserInfo(res.data.user_info);
-      localStorage.setItem('userInfo', JSON.stringify(res.data.user_info));
-      navigate('/dashboard');
-    } catch (err) {
-      setMessage(err?.response?.data?.detail || 'Google login failed');
-    }
-  };
+      dispatch(setAuthState({
+        userInfo: res.data.user_info,
+        accessToken: res.data.access_token
+      }));
+
+    navigate('/dashboard');
+  } catch (err) {
+    setMessage(err?.response?.data?.detail || 'Google login failed');
+  }
+};
+
 
   return (
     <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded-xl shadow-lg">

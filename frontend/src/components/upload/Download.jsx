@@ -15,9 +15,6 @@ const Download = () => {
     const response = await axios.get(`http://localhost:8000/download`, {
       params: { file_hash: fileHash },
       responseType: 'blob', // crucial for binary data
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
       withCredentials: true,
     });
 
@@ -46,9 +43,7 @@ const deleteFile = async (fileHash) => {
   try {
     await axios.delete("http://localhost:8000/delete-file", {
       params: { file_hash: fileHash },
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
+  
       withCredentials: true,
     });
 

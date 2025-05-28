@@ -3,9 +3,12 @@ import axios from 'axios';
 import QRCode from 'react-qr-code';
 import { GlobalContext } from '../../index.jsx';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { setAuthState } from '../../redux/userSlice';
 
 export default function Register() {
-  const { setLoggedIn, setAccessToken ,userInfo,setUserInfo} = useContext(GlobalContext);
+  const dispatch = useDispatch()
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [message, setMessage] = useState('');
@@ -27,12 +30,10 @@ export default function Register() {
 
       setMessage('Registration successful');
       setTotpUri(res.data.totp_uri);
-      setAccessToken(res.data.access_token);
-      setLoggedIn(true);
-      setUserInfo(res.data.user_info);
-      console.log(res.data.user_info);
-      localStorage.setItem('userInfo', JSON.stringify(res.data.user_info));
-      console.log(userInfo);
+        dispatch(setAuthState({
+      userInfo: res.data.user_info,
+      accessToken: res.data.access_token
+    }));
     } catch (err) {
       setMessage(err.response?.data?.detail || 'Error during registration');
     } finally {

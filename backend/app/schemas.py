@@ -10,6 +10,8 @@ class UserInfo(BaseModel):
     email: EmailStr
     role: str
 
+class VirusTotalRequest(BaseModel):
+    fileHash: str
 
 class UserLogin(BaseModel):
     email: EmailStr

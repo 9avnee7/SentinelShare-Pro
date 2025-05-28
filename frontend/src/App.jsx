@@ -14,6 +14,9 @@ import AdminRoleManager from './components/RoleManager/adminRoleManager';
 import RequireRole from './components/protectedRoutes/requiredRole';
 import Dashboard from './components/Dashboard/Dashboard';
 import RequireNoAuth from './components/protectedRoutes/RequireNoAuth';
+import { useDispatch } from 'react-redux'
+import { setAuthState, clearAuthState } from './redux/userSlice'
+
 
 const router=createBrowserRouter([
   {
@@ -77,44 +80,42 @@ const router=createBrowserRouter([
   }
 ])
 
-function App() {
+function App() {  
+  const dispatch = useDispatch();
 
-  const { setAccessToken, setUserInfo, setLoggedIn, setLoading } = useContext(GlobalContext);
-  const userInfo = JSON.parse(sessionStorage.getItem('userInfo')) || null;
-  
+  const { setLoading } = useContext(GlobalContext);
   const refresh = async () => {
   try {
     console.log("Refreshing token on refresh");
+
     const res = await axios.post(
       "http://localhost:8000/user/refresh",
-      {}, // empty body
+      {},
       { withCredentials: true }
     );
 
     const data = res.data;
 
     if (!data.user_info) {
-      setUserInfo(null);
-      setAccessToken(null);
-      setLoggedIn(false);
+      dispatch(clearAuthState())
       return;
     }
 
-    sessionStorage.setItem("userInfo", JSON.stringify(data.user_info));
-    setUserInfo(data.user_info);
-    setAccessToken(data.access_token);
-    setLoggedIn(true);
+    dispatch(
+      setAuthState({
+        userInfo: data.user_info,
+        accessToken: data.access_token
+      })
+    );
 
     console.log("User Info Updated:", data.user_info);
   } catch (e) {
     console.error("Error occurred on refreshing refreshToken", e);
-    setAccessToken(null);
-    setLoggedIn(false);
+    dispatch(clearAuthState());
   } finally {
-    setLoading(false);
+    setLoading(false); // can stay as local state
   }
-};
-
+}
 useEffect(() => {
   refresh();
   const interval = setInterval(() => {
@@ -125,10 +126,6 @@ useEffect(() => {
 }, []);
 
 
-   useEffect(() => {
-    console.log("Updated userInfo:", userInfo);
-    sessionStorage.setItem('userInfo',JSON.stringify(userInfo))
-}, [userInfo]);
 
   return (
     <>

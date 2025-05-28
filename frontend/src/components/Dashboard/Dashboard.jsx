@@ -1,11 +1,15 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useDispatch } from 'react-redux'
+import { useSelector } from 'react-redux';
+import { clearAuthState } from '../../redux/userSlice.js';
 
 const Dashboard = () => {
+  const dispatch = useDispatch()
   const navigate = useNavigate();
 
-  const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+  const userInfo = useSelector((state) => state.user.userInfo);
 
   if (!userInfo) {
     navigate("/login");
@@ -18,13 +22,8 @@ const Dashboard = () => {
 const handleLogout = async () => {
   try {
     await axios.post('http://localhost:8000/user/logout', {}, { withCredentials: true });
-    // Clear localStorage
-    localStorage.clear();
-    sessionStorage.clear();
 
-    // You can't delete HttpOnly cookies from frontend JS, so backend handles it.
-
-    // Redirect or update state
+    dispatch(clearAuthState()); 
     navigate("/");
   } catch (error) {
     console.error("Logout failed:", error);

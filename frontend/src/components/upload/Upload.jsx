@@ -5,6 +5,8 @@ const Upload = () => {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanPhase, setScanPhase] = useState("");
   const [progress, setProgress] = useState(0);
   const [currentChunk, setCurrentChunk] = useState(0);
   const [totalChunks, setTotalChunks] = useState(0);
@@ -16,6 +18,8 @@ const Upload = () => {
     setProgress(0);
     setCurrentChunk(0);
     setTotalChunks(0);
+    setScanProgress(0);
+    setScanPhase("");
   };
 
   const readFileAsArrayBuffer = (file) => {
@@ -43,33 +47,43 @@ const Upload = () => {
       setScanning(true);
       setUploading(false);
       setProgress(0);
+      setScanProgress(0);
+      setScanPhase("Scanning with YARA...");
 
       const formData = new FormData();
       formData.append("file", file);
 
-      // Step 1: Scan file
-      await axios.post("http://localhost:8000/validate", formData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+      await axios.post("http://localhost:8000/validate/yara", formData, {
         withCredentials: true,
       });
+      setScanProgress(33);
+      setScanPhase("Scanning with ClamAV...");
+
+      await axios.post("http://localhost:8000/validate/clamav", formData, {
+        withCredentials: true,
+      });
+      setScanProgress(66);
+      setScanPhase("Scanning with VirusTotal...");
+
+      const arrayBuffer = await readFileAsArrayBuffer(file);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      await axios.post("http://localhost:8000/validate/virustotal", {fileHash:hashHex});
+
+      setScanProgress(100);
+      setScanPhase("Scan completed");
+      alert("File scanned successfully. Proceeding to upload...");
 
       setScanning(false);
       setUploading(true);
 
-      // Step 2: Encrypt & upload chunks
       const key = await crypto.subtle.generateKey(
         { name: "AES-GCM", length: 256 },
         true,
         ["encrypt"]
       );
-
-      const arrayBuffer = await readFileAsArrayBuffer(file);
-
-      const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
       const total = Math.ceil(file.size / chunkSize);
       setTotalChunks(total);
@@ -83,14 +97,14 @@ const Upload = () => {
         const iv = crypto.getRandomValues(new Uint8Array(12));
         const encryptedChunk = await encryptChunk(chunkArrayBuffer, key, iv);
 
-        const formData = new FormData();
-        formData.append("chunk", new Blob([encryptedChunk]));
-        formData.append("chunkIndex", i);
-        formData.append("fileName", file.name);
-        formData.append("iv", JSON.stringify(Array.from(iv)));
-        formData.append("fileHash", hashHex);
-        formData.append("totalChunks", total);
-        formData.append(
+        const chunkFormData = new FormData();
+        chunkFormData.append("chunk", new Blob([encryptedChunk]));
+        chunkFormData.append("chunkIndex", i);
+        chunkFormData.append("fileName", file.name);
+        chunkFormData.append("iv", JSON.stringify(Array.from(iv)));
+        chunkFormData.append("fileHash", hashHex);
+        chunkFormData.append("totalChunks", total);
+        chunkFormData.append(
           "key",
           btoa(
             String.fromCharCode(
@@ -99,14 +113,11 @@ const Upload = () => {
           )
         );
 
-        await axios.post("http://localhost:8000/upload", formData, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+        await axios.post("http://localhost:8000/upload", chunkFormData, {
+     
           withCredentials: true,
         });
 
-        // Update progress
         setCurrentChunk(i + 1);
         setProgress(Math.round(((i + 1) / total) * 100));
       }
@@ -121,6 +132,8 @@ const Upload = () => {
       setProgress(0);
       setCurrentChunk(0);
       setTotalChunks(0);
+      setScanProgress(0);
+      setScanPhase("");
     }
   };
 
@@ -135,14 +148,14 @@ const Upload = () => {
         disabled={scanning || uploading}
       />
 
-      {/* Scanning progress */}
+      {/* Scanning progress with phase */}
       {scanning && (
         <div className="mb-4">
-          <p className="mb-2 font-semibold text-blue-600">Scanning file...</p>
+          <p className="mb-2 font-semibold text-blue-600">{scanPhase}</p>
           <div className="w-full bg-gray-200 rounded h-4 overflow-hidden">
             <div
-              className="bg-blue-600 h-4 animate-pulse"
-              style={{ width: "100%" }}
+              className="bg-blue-600 h-4 transition-all duration-300"
+              style={{ width: `${scanProgress}%` }}
             />
           </div>
         </div>
@@ -176,7 +189,7 @@ const Upload = () => {
         } text-white px-4 py-2 rounded`}
       >
         {scanning
-          ? "Scanning..."
+          ? scanPhase
           : uploading
           ? `Uploading (${progress}%)`
           : "Upload File"}

@@ -1,11 +1,12 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 const RequireNoAuth = ({ children }) => {
-  const userInfo = localStorage.getItem("userInfo");
+  const userInfo = useSelector((state) => state.user.userInfo);
 
   if (userInfo) {
-    // User is logged in, redirect to dashboard (or wherever)
+    // User is logged in, redirect to dashboard (or wherever you want)
     return <Navigate to="/dashboard" replace />;
   }
 
