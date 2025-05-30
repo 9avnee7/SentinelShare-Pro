@@ -5,11 +5,18 @@ from typing import List
 import logging
 import os
 from jose import JWTError, jwt
+from ..utils.IpEncryption import AES256Encryptor
+import base64
 logging.basicConfig(level=logging.INFO)
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "defaultsecret")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 router = APIRouter(prefix="/admin", tags=["Admin"])
+
+
+AES_256_KEY_B64 = os.getenv("AES_256_KEY_B64")
+AES_256_KEY = base64.b64decode(AES_256_KEY_B64) 
+encryptor = AES256Encryptor(AES_256_KEY)
 
 # --- Dependencies ---
 def get_db():
@@ -58,3 +65,33 @@ def update_user_role(user_id: int, role: str, db: Session = Depends(get_db), cur
     user.role = role
     db.commit()
     return {"message": f"User {user.email}'s role updated to {role}"}
+
+
+
+@router.get("/audit-logs")
+async def get_audit_logs(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(superadmin_required)
+):
+    logs = db.query(models.AuditLog).all()
+    if not logs:
+        return []
+
+    result = []
+    for log in logs:
+        try:
+            print(f"Decrypting IP for log ID {log.id}")  # DEBUG
+            decrypted_ip = encryptor.decrypt(log.ip)
+        except Exception as e:
+            print(f"Error decrypting IP for log ID {log.id}: {e}")
+            decrypted_ip = "Decryption Failed"
+
+        result.append({
+            "id": log.id,
+            "action": log.action,
+            "user_id": log.user_id,
+            "ip": decrypted_ip,
+            "timestamp": log.timestamp.isoformat() if log.timestamp else None
+        })
+
+    return result

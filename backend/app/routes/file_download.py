@@ -14,9 +14,7 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = os.getenv("JWT_ALGORITHM")
 
 
-AES_256_KEY_B64 = os.getenv("AES_256_KEY_B64")
-AES_256_KEY = base64.b64decode(AES_256_KEY_B64) 
-encryptor = AES256Encryptor(AES_256_KEY)
+
 
 
 def get_db():
@@ -194,30 +192,3 @@ async def get_user_files(request: Request, db: Session = Depends(get_db)):
 
 
 
-
-@router.get("/audit-logs")
-async def get_audit_logs(
-    db: Session = Depends(get_db)
-):
-    logs = db.query(models.AuditLog).all()
-    if not logs:
-        return []
-
-    result = []
-    for log in logs:
-        try:
-            print(f"Decrypting IP for log ID {log.ip}")  # DEBUG
-            decrypted_ip = encryptor.decrypt(log.ip)
-        except Exception as e:
-            print(f"Error decrypting IP for log ID {log.id}: {e}")
-            decrypted_ip = "Decryption Failed"
-
-        result.append({
-            "id": log.id,
-            "action": log.action,
-            "user_id": log.user_id,
-            "ip": decrypted_ip,
-            "timestamp": log.timestamp.isoformat() if log.timestamp else None
-        })
-
-    return result
