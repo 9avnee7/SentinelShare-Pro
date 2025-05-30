@@ -7,8 +7,16 @@ from fastapi import Query
 from jose import JWTError, jwt
 import os
 import json
-
+import base64
 from fastapi.responses import JSONResponse
+from ..utils.IpEncryption import AES256Encryptor
+
+
+
+AES_256_KEY_B64 = os.getenv("AES_256_KEY_B64")
+AES_256_KEY = base64.b64decode(AES_256_KEY_B64) 
+encryptor = AES256Encryptor(AES_256_KEY)
+
 
 router = APIRouter(tags=["Upload"])
 
@@ -60,11 +68,12 @@ async def upload_chunk(
     # Log upload attempt
     if chunkIndex == 0:
         client_ip = request.client.host
+        encrypted_ip = encryptor.encrypt(client_ip)
         print(f"Upload request from IP: {client_ip}, user: {user_email}")
         audit_log = models.AuditLog(
             action="upload",
             user_id=user.id,
-            ip=client_ip
+            ip=encrypted_ip
         )
         db.add(audit_log)
         db.commit()
@@ -155,11 +164,13 @@ async def delete_file(
         delete_chunks_azure(file_hash, file_record.chunk_count)
          # Log download attempt
         client_ip = request.client.host
+        encrypted_ip = encryptor.encrypt(client_ip)
+
         print(f"delete request from IP: {client_ip}, user: {user_email}")
         audit_log = models.AuditLog(
             action="deleted",
             user_id=user.id,
-            ip=client_ip
+            ip=encrypted_ip
         )
         db.add(audit_log)
         db.commit()

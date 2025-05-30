@@ -84,6 +84,7 @@ async def validate_yara(file: UploadFile = File(...)):
             s3_client.delete_object(Bucket=S3_BUCKET, Key=s3_key)
         except Exception as delete_err:
             print(f"[Warning] Failed to delete from S3: {delete_err}")
+            # print("failed")
 
 
         if matches: 

@@ -9,7 +9,6 @@ from . import models
 #now we will setup cors
 from fastapi.middleware.cors import CORSMiddleware
 
-from .tasks.scan import test_scan_task
 
 # CORS setup
 origins = [
@@ -36,11 +35,6 @@ app.include_router(file_download.router)
 app.include_router(file_validation.router)
 app.include_router(superadmin_routes.router)
 
-
-@app.get("/test-scan")
-def trigger_scan():
-    result = test_scan_task.delay("demo_file.txt")
-    return {"task_id": result.id}
 
 
 @app.get("/")

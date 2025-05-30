@@ -1,4 +1,3 @@
-// src/redux/store.js
 import { configureStore } from '@reduxjs/toolkit'
 import userReducer from './userSlice'
 import {
@@ -14,6 +13,33 @@ import {
 import storage from 'redux-persist/lib/storage' 
 import { encryptTransform } from 'redux-persist-transform-encrypt'
 
+const secretKey = import.meta.env.VITE_REDUX_SECRET_KEY
+
+function validateSecretKey(key) {
+  if (typeof key !== 'string' || key.trim() === '') {
+    throw new Error('Redux Persist encryption secretKey is missing or empty')
+  }
+  if (key.length < 16) {
+    throw new Error('Redux Persist encryption secretKey is too short, must be at least 16 characters')
+  }
+  const validChars = /^[A-Za-z0-9+/=]+$/
+  if (!validChars.test(key)) {
+    throw new Error('Redux Persist encryption secretKey contains invalid characters')
+  }
+  try {
+    atob(key)
+  } catch {
+    throw new Error('Redux Persist encryption secretKey is not valid base64')
+  }
+  return true
+}
+
+
+try {
+  validateSecretKey(secretKey)
+} catch (error) {
+  console.error(error)
+}
 
 const persistConfig = {
   key: 'root',
@@ -21,10 +47,8 @@ const persistConfig = {
   whitelist: ['user'],
   transforms: [
     encryptTransform({
-      secretKey:import.meta.env.VITE_REDUX_SECRET_KEY, 
-      onError: function (error) {
-        console.error('Encryption error:', error)
-      }
+      secretKey,
+      onError: (err) => console.error('Encryption error:', err)
     })
   ]
 }

@@ -17,10 +17,8 @@ environment=os.getenv("environment","development")
 
 
 secureCheck=environment=="production"
-if(secureCheck):
-    flexibility="Strict"
-else:
-    flexibility="Lax"
+flexibility="Strict"
+
 
 # Logger setup
 logging.basicConfig(level=logging.INFO)
